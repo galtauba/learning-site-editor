@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- Fix the GitHub Release workflow cache path after its multi-repository checkout, allowing the Windows installer release to build and publish successfully.
+
 ## 1.1.0
 
 - Full workspace editor: page metadata, folders, ordering, publication, RTL/LTR, tags, table of contents, homepage, branding, themes, media, favicon, preview, and local draft recovery.
