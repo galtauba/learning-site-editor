@@ -4,9 +4,7 @@ import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { app, dialog, shell } from "electron";
-import { buildProject, createProject, detectProject, migrateProject as engineMigrateProject, validateProject } from "@learning-site/engine";
-import { paths, readProject } from "../../learning-site-engine/src/project.js";
-import { loadPages, savePage as engineSavePage } from "../../learning-site-engine/src/content.js";
+import { buildProject, createProject, detectProject, loadPages, migrateProject as engineMigrateProject, paths, readProject, savePage as engineSavePage, validateProject } from "@learning-site/engine";
 import { applyOfficialUpdate, inspectProject, OFFICIAL_UPSTREAM, syncOrigin } from "./git-workflow.js";
 const DATA = () => join(app.getPath("userData"), "projects.json");
 const draftPath = (root) => join(app.getPath("userData"), "drafts", `${createHash("sha256").update(resolve(root)).digest("hex")}.json`);
@@ -46,6 +44,10 @@ export async function clone(url, destination) { if (!/^((https:\/\/|git@)[\w.-]+
     throw new Error("The destination folder already exists."); await git(resolve(destination, ".."), ["clone", url, destination]); const hasHead = await git(destination, ["rev-parse", "--verify", "HEAD"]).then(() => true).catch(() => false); if (!hasHead)
     await initializeEmptyRepositoryFromOfficial(destination); return remember(destination); }
 export async function remove(id) { await save((await registry()).filter(p => p.id !== id)); }
+export async function updateRegistryProject(id, changes) { const items = await registry(), index = items.findIndex(item => item.id === id); if (index < 0)
+    throw new Error("Project is not registered."); const item = { ...items[index] }; for (const key of ["autoUpdates", "autoPush", "trusted"])
+    if (typeof changes[key] === "boolean")
+        item[key] = changes[key]; items[index] = item; await save(items); return items[index]; }
 export async function deleteLocal(id, confirmation) { const item = (await registry()).find(p => p.id === id); if (!item)
     throw new Error("Project is not registered."); if (confirmation !== item.name)
     throw new Error("Type the exact project name to delete its local clone."); const root = resolve(item.path); if (root === resolve(root, "..") || root.length < 4 || !await exists(join(root, ".git")))
@@ -137,7 +139,7 @@ export async function importLegacyRegistry() { const candidates = [join(process.
     catch { /* absent legacy registry is normal */ }
 } return added; }
 const workflowRunner = (root) => (args, check = true) => check ? git(root, args) : git(root, args).catch(() => undefined);
-export async function projectStatus(root) { return inspectProject(workflowRunner(root)); }
+export async function projectStatus(root, checkOfficialUpdates = true) { return inspectProject(workflowRunner(root), checkOfficialUpdates); }
 export async function syncProject(root, push = true) { return syncOrigin(workflowRunner(root), push); }
 export async function updateProject(root, tag) { await applyOfficialUpdate(workflowRunner(root), tag); return projectStatus(root); }
 const contentRoot = (root) => paths(root).content;

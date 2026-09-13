@@ -16,11 +16,14 @@ describe("production release contract",()=>{
   for(const required of ["npm run lint","npm test","npm run package","Get-FileHash","softprops/action-gh-release"]){expect(workflow).toContain(required);}
  });
  it("keeps file and process capabilities out of the renderer",async()=>{
-  const preload=await source("electron/preload.ts");
+  const preload=await source("electron/preload.cts");
   const main=await source("electron/main.ts");
   expect(preload).not.toMatch(/node:fs|child_process|shell\.openExternal/);
   expect(main).toContain("contextIsolation:true");
   expect(main).toContain("nodeIntegration:false");
+  expect(main).toContain("preload.cjs");
+  expect(main).toContain("git:projectStatus");
+  expect(main).toContain("git:updateProject");
  });
  it("uses a checkpointed migration flow",async()=>{
   const services=await source("electron/services.ts");

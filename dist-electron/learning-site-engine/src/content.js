@@ -12,7 +12,7 @@ catch {
 } if (!front || typeof front !== "object")
     throw new ValidationError("Invalid page frontmatter", { sourcePath }); return { frontmatter: front, body: raw.slice(match[0].length), sourcePath }; }
 export function serializePage(page) { return `---\n${JSON.stringify(page.frontmatter, null, 2)}\n---\n${page.body.trim()}\n`; }
-export async function loadPages(root) { const base = join(root, "content"); const names = (await files(base)).filter(p => p.endsWith(".md")).sort(); return Promise.all(names.map(async (name) => parsePage(name, await text(join(base, name))))); }
+export async function loadPages(root) { const base = join(root, "content"); const names = (await files(base)).filter(p => p.endsWith(".md")).sort(); return Promise.all(names.map(async (name) => parsePage(name.replaceAll("\\", "/"), await text(join(base, name))))); }
 export async function savePage(root, page) { const rel = page.sourcePath || `${page.frontmatter.slug}/index.md`; if (rel.includes(".."))
     throw new ValidationError("Unsafe page source path", { rel }); await writeText(join(root, "content", rel), serializePage(page)); }
 export function markdownHtml(markdown) { const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); const inline = (s) => escape(s).replace(/!\[([^\]]*)\]\(([^ )]+)\)/g, '<img alt="$1" src="$2">').replace(/\[([^\]]+)\]\((https?:\/\/[^ )]+|\/[^ )]*)\)/g, '<a href="$2">$1</a>').replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>"); const lines = markdown.split(/\r?\n/); let html = "", list = false, code = false; for (const line of lines) {

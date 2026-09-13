@@ -9,13 +9,23 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with: { path: learning-site-editor }
+      - uses: actions/checkout@v4
+        with: { repository: galtauba/learning-site-engine, path: learning-site-engine }
+      - uses: actions/checkout@v4
+        with: { repository: galtauba/learning-site-themes, path: learning-site-themes }
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: npm }
       - run: npm ci
+        working-directory: learning-site-editor
       - run: npm run lint
+        working-directory: learning-site-editor
       - run: npm test
+        working-directory: learning-site-editor
       - run: npm run package
+        working-directory: learning-site-editor
       - shell: pwsh
+        working-directory: learning-site-editor
         run: Get-FileHash release\*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  $($_.Path)" } | Out-File release\checksums.txt
       - uses: softprops/action-gh-release@v2
-        with: { files: "release/*.exe\nrelease/checksums.txt" }
+        with: { files: "learning-site-editor/release/*.exe\nlearning-site-editor/release/checksums.txt" }

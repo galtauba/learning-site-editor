@@ -1,2 +1,3 @@
-export const CURRENT_FORMAT_VERSION = 3;
-export const ENGINE_VERSION = "3.0.0";
+/** The on-disk format emitted by the current engine. */
+export const CURRENT_FORMAT_VERSION = 4;
+export const ENGINE_VERSION = "4.0.0";

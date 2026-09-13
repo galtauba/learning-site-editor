@@ -23,6 +23,7 @@ app.whenReady().then(async () => {
     handle("projects:create", (p, t, l) => service.create(root(p), String(t), l === "he" ? "he" : "en"));
     handle("projects:open", p => service.remember(root(p)));
     handle("projects:remove", service.remove);
+    handle("projects:updateSettings", (id, changes) => service.updateRegistryProject(String(id), changes ?? {}));
     handle("projects:delete", service.deleteLocal);
     handle("projects:clone", (url, destination) => service.clone(String(url), root(destination)));
     handle("projects:importLegacy", service.importLegacyRegistry);
@@ -52,7 +53,7 @@ app.whenReady().then(async () => {
     handle("editor:setPublication", (p, ids, published) => service.setPublication(root(p), Array.isArray(ids) ? ids.map(String) : [], Boolean(published)));
     handle("editor:trashPage", (p, file) => service.trashPage(root(p), String(file)));
     handle("git:status", p => service.git(root(p), ["status", "--short", "--branch"]));
-    handle("git:projectStatus", p => service.projectStatus(root(p)));
+    handle("git:projectStatus", (p, checkOfficialUpdates) => service.projectStatus(root(p), checkOfficialUpdates !== false));
     handle("git:syncProject", (p, push) => service.syncProject(root(p), push !== false));
     handle("git:updateProject", (p, tag) => service.updateProject(root(p), String(tag)));
     handle("git:init", p => service.git(root(p), ["init"]));
