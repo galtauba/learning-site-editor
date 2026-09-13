@@ -20,6 +20,10 @@ jobs:
           cache: npm
           cache-dependency-path: learning-site-editor/package-lock.json
       - run: npm ci
+        working-directory: learning-site-engine
+      - run: npm run build
+        working-directory: learning-site-engine
+      - run: npm ci
         working-directory: learning-site-editor
       - run: npm run lint
         working-directory: learning-site-editor

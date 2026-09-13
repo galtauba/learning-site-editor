@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2
+
+- Build the Engine before installing the desktop app in GitHub Actions, so local package dependencies include their generated runtime and type files during release validation.
+
 ## 1.1.1
 
 - Fix the GitHub Release workflow cache path after its multi-repository checkout, allowing the Windows installer release to build and publish successfully.
