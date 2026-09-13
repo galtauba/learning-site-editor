@@ -15,7 +15,10 @@ jobs:
       - uses: actions/checkout@v4
         with: { repository: galtauba/learning-site-themes, path: learning-site-themes }
       - uses: actions/setup-node@v4
-        with: { node-version: 24, cache: npm }
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: learning-site-editor/package-lock.json
       - run: npm ci
         working-directory: learning-site-editor
       - run: npm run lint
