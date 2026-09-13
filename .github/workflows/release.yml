@@ -1,0 +1,21 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run package
+      - shell: pwsh
+        run: Get-FileHash release\*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  $($_.Path)" } | Out-File release\checksums.txt
+      - uses: softprops/action-gh-release@v2
+        with: { files: "release/*.exe\nrelease/checksums.txt" }

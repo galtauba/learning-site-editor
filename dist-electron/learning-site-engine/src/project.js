@@ -1,0 +1,10 @@
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { mkdir } from "node:fs/promises";
+import { exists, json, writeJson } from "./fs.js";
+import { CURRENT_FORMAT_VERSION, ENGINE_VERSION } from "./types.js";
+export const paths = (root) => ({ meta: join(root, ".learning-site", "project.json"), site: join(root, "site.json"), navigation: join(root, "navigation.json"), theme: join(root, "theme.json"), content: join(root, "content"), media: join(root, "media"), mediaIndex: join(root, "media", "index.json"), public: join(root, "public") });
+export const defaultTheme = () => ({ id: "default", name: "Default", version: "1.0.0", tokens: { "--background": "#ffffff", "--text": "#172033", "--surface": "#f2f5fa", "--accent": "#225ee8", "--muted": "#5c677d", "--font": "system-ui, sans-serif" } });
+export async function createProject(root, options = {}) { const p = paths(root); if (await exists(p.meta))
+    throw new Error("A Learning Site project already exists at this location."); await Promise.all([mkdir(p.content, { recursive: true }), mkdir(p.media, { recursive: true }), mkdir(p.public, { recursive: true })]); const now = new Date().toISOString(), locale = options.locale ?? "en"; const meta = { formatVersion: CURRENT_FORMAT_VERSION, engineVersion: ENGINE_VERSION, id: randomUUID(), createdAt: now, updatedAt: now }; const site = { title: options.title ?? "My Learning Site", description: "", defaultLocale: locale, locales: [{ code: "en", direction: "ltr", label: "English" }, { code: "he", direction: "rtl", label: "עברית" }], theme: "default" }; const nav = { items: [] }; await Promise.all([writeJson(p.meta, meta), writeJson(p.site, site), writeJson(p.navigation, nav), writeJson(p.theme, { ...defaultTheme(), ...options.theme, tokens: { ...defaultTheme().tokens, ...options.theme?.tokens } }), writeJson(p.mediaIndex, [])]); }
+export async function readProject(root) { const p = paths(root); return { meta: await json(p.meta), site: await json(p.site), navigation: await json(p.navigation), theme: await json(p.theme) }; }
