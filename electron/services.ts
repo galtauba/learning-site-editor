@@ -37,7 +37,6 @@ import type { Page } from "../src/shared/api.js";
 import {
   applyOfficialUpdate,
   inspectProject,
-  OFFICIAL_UPSTREAM,
   syncOrigin,
 } from "./git-workflow.js";
 
@@ -185,42 +184,12 @@ export async function create(
   await git(root, ["init"]);
   return remember(root);
 }
-async function initializeEmptyRepositoryFromOfficial(
-  root: string,
-): Promise<string> {
-  if (
-    await git(root, ["rev-parse", "--verify", "HEAD"])
-      .then(() => true)
-      .catch(() => false)
-  )
-    throw new Error("Initial setup is available only for an empty repository.");
-  const existing = await git(root, ["remote", "get-url", "upstream"]).catch(
-    () => undefined,
-  );
-  if (
-    existing &&
-    existing
-      .trim()
-      .replace(/\/$/, "")
-      .replace(/\.git$/, "") !== OFFICIAL_UPSTREAM.replace(/\.git$/, "")
-  )
-    throw new Error(
-      "The existing upstream remote is not the official Learning Site repository.",
-    );
-  if (!existing)
-    await git(root, ["remote", "add", "upstream", OFFICIAL_UPSTREAM]);
-  await git(root, ["fetch", "upstream", "--tags", "--prune"]);
-  const head = await git(root, [
-    "symbolic-ref",
-    "--quiet",
-    "refs/remotes/upstream/HEAD",
-  ]).catch(() => "refs/remotes/upstream/main");
-  const branch =
-    head.trim().replace(/^refs\/remotes\/upstream\//, "") || "main";
-  await git(root, ["show-ref", "--verify", `refs/remotes/upstream/${branch}`]);
-  await git(root, ["checkout", "-B", branch, `upstream/${branch}`]);
-  await git(root, ["push", "-u", "origin", branch]);
-  return branch;
+async function seedEmptyRepositoryWithCurrentProject(root: string) {
+  const hasHead = await git(root, ["rev-parse", "--verify", "HEAD"])
+    .then(() => true)
+    .catch(() => false);
+  if (hasHead) throw new Error("The repository is not empty.");
+  await createProject(root, { title: basename(root), locale: "he" });
 }
 export async function clone(url: string, destination: string) {
   if (!/^((https:\/\/|git@)[\w.-]+[/:])[\w./-]+(?:\.git)?$/.test(url))
@@ -231,7 +200,7 @@ export async function clone(url: string, destination: string) {
   const hasHead = await git(destination, ["rev-parse", "--verify", "HEAD"])
     .then(() => true)
     .catch(() => false);
-  if (!hasHead) await initializeEmptyRepositoryFromOfficial(destination);
+  if (!hasHead) await seedEmptyRepositoryWithCurrentProject(destination);
   return remember(destination);
 }
 export async function remove(id: string) {

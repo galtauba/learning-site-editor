@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { app, dialog, shell } from "electron";
 import { buildProject, createProject, detectProject, loadPages, migrateProject as engineMigrateProject, paths, readProject, savePage as engineSavePage, validateProject, } from "@learning-site/engine";
-import { applyOfficialUpdate, inspectProject, OFFICIAL_UPSTREAM, syncOrigin, } from "./git-workflow.js";
+import { applyOfficialUpdate, inspectProject, syncOrigin, } from "./git-workflow.js";
 const DATA = () => join(app.getPath("userData"), "projects.json");
 const draftPath = (root) => join(app.getPath("userData"), "drafts", `${createHash("sha256").update(resolve(root)).digest("hex")}.json`);
 const exists = async (path) => access(path)
@@ -93,31 +93,13 @@ export async function create(parent, title, locale) {
     await git(root, ["init"]);
     return remember(root);
 }
-async function initializeEmptyRepositoryFromOfficial(root) {
-    if (await git(root, ["rev-parse", "--verify", "HEAD"])
+async function seedEmptyRepositoryWithCurrentProject(root) {
+    const hasHead = await git(root, ["rev-parse", "--verify", "HEAD"])
         .then(() => true)
-        .catch(() => false))
-        throw new Error("Initial setup is available only for an empty repository.");
-    const existing = await git(root, ["remote", "get-url", "upstream"]).catch(() => undefined);
-    if (existing &&
-        existing
-            .trim()
-            .replace(/\/$/, "")
-            .replace(/\.git$/, "") !== OFFICIAL_UPSTREAM.replace(/\.git$/, ""))
-        throw new Error("The existing upstream remote is not the official Learning Site repository.");
-    if (!existing)
-        await git(root, ["remote", "add", "upstream", OFFICIAL_UPSTREAM]);
-    await git(root, ["fetch", "upstream", "--tags", "--prune"]);
-    const head = await git(root, [
-        "symbolic-ref",
-        "--quiet",
-        "refs/remotes/upstream/HEAD",
-    ]).catch(() => "refs/remotes/upstream/main");
-    const branch = head.trim().replace(/^refs\/remotes\/upstream\//, "") || "main";
-    await git(root, ["show-ref", "--verify", `refs/remotes/upstream/${branch}`]);
-    await git(root, ["checkout", "-B", branch, `upstream/${branch}`]);
-    await git(root, ["push", "-u", "origin", branch]);
-    return branch;
+        .catch(() => false);
+    if (hasHead)
+        throw new Error("The repository is not empty.");
+    await createProject(root, { title: basename(root), locale: "he" });
 }
 export async function clone(url, destination) {
     if (!/^((https:\/\/|git@)[\w.-]+[/:])[\w./-]+(?:\.git)?$/.test(url))
@@ -129,7 +111,7 @@ export async function clone(url, destination) {
         .then(() => true)
         .catch(() => false);
     if (!hasHead)
-        await initializeEmptyRepositoryFromOfficial(destination);
+        await seedEmptyRepositoryWithCurrentProject(destination);
     return remember(destination);
 }
 export async function remove(id) {

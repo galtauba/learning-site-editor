@@ -530,7 +530,7 @@ function App() {
               status={git}
               busy={busy}
               sync={() =>
-                void run(async () => {
+                run(async () => {
                   const result = await api.git.syncProject(
                     project.path,
                     project.autoPush !== false,
@@ -540,10 +540,10 @@ function App() {
                 })
               }
               history={() =>
-                void run(() => api.git.history(project.path).then(String))
+                run(() => api.git.history(project.path).then(String))
               }
               commit={(name: string, email: string) =>
-                void run(async () => {
+                run(async () => {
                   await api.git.identity(project.path, name, email);
                   await api.git.commit(
                     project.path,
@@ -555,7 +555,7 @@ function App() {
                 })
               }
               updatePrefs={(autoPush: boolean, autoUpdates: boolean) =>
-                void run(async () => {
+                run(async () => {
                   const next = await api.projects.updateSettings(project.id, {
                     autoPush,
                     autoUpdates,
@@ -566,14 +566,14 @@ function App() {
                 })
               }
               updateOfficial={(tag: string) =>
-                void run(async () => {
+                run(async () => {
                   await api.git.updateProject(project.path, tag);
                   await refresh(project);
                   return `Official update ${tag} applied and pushed to your repository.`;
                 })
               }
               deleteLocal={(confirmation: string) =>
-                void run(async () => {
+                run(async () => {
                   await api.projects.delete(project.id, confirmation);
                   await reload();
                   setProject(undefined);
@@ -1558,7 +1558,11 @@ const Git = ({
           </dd>
         </dl>
         <div className="row">
-          <button className="primary" disabled={busy} onClick={sync}>
+          <button
+            className="primary"
+            disabled={busy || status?.state === "UNINITIALIZED"}
+            onClick={sync}
+          >
             סנכרן פרויקט
           </button>
           <button
@@ -1568,6 +1572,15 @@ const Git = ({
             הצג היסטוריה
           </button>
         </div>
+        {status?.state === "UNINITIALIZED" && (
+          <section className="warning">
+            <b>repository חדש — טרם נוצר commit ראשון</b>
+            <p>
+              נוצרו בו קבצי Learning Site החדשים בלבד. הזן שם ואימייל למטה ולחץ
+              על יצירת ה־commit הראשון; הפעולה תדחוף אותו ל־origin שלך.
+            </p>
+          </section>
+        )}
         {status?.state === "UPSTREAM_UPDATE_AVAILABLE" &&
           status.latestVersion && (
             <section className="warning">
@@ -1585,7 +1598,11 @@ const Git = ({
               </button>
             </section>
           )}
-        <h2>Commit ופרסום</h2>
+        <h2>
+          {status?.state === "UNINITIALIZED"
+            ? "יצירת אתר ו־commit ראשוני"
+            : "Commit ופרסום"}
+        </h2>
         <label>
           שם ב־Git
           <input
@@ -1606,7 +1623,9 @@ const Git = ({
           disabled={busy || !name.trim() || !email.trim()}
           onClick={() => commit(name.trim(), email.trim())}
         >
-          צור commit ושלח
+          {status?.state === "UNINITIALIZED"
+            ? "צור ודחוף commit ראשוני"
+            : "צור commit ושלח"}
         </button>
         <h2>העדפות פרויקט</h2>
         <label>
