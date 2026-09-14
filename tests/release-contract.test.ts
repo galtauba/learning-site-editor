@@ -11,6 +11,7 @@ describe("production release contract", () => {
     expect(pkg.build.publish[0].provider).toBe("github");
     expect(pkg.build.extraResources[0].to).toBe("themes");
     expect(pkg.dependencies["electron-updater"]).toBeTruthy();
+    expect(pkg.build.win.artifactName).toContain("Learning-Site-Editor-Setup");
   });
   it("release workflow validates, tests, packages, checksums, and publishes", async () => {
     const workflow = await source(".github/workflows/release.yml");
