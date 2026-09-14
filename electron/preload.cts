@@ -1,4 +1,73 @@
 import { contextBridge, ipcRenderer } from "electron";
-const call=(channel:string)=>(...args:unknown[])=>ipcRenderer.invoke(channel,...args);
-const git=Object.assign(call("git:status"),{status:call("git:status"),projectStatus:call("git:projectStatus"),syncProject:call("git:syncProject"),updateProject:call("git:updateProject"),init:call("git:init"),sync:call("git:sync"),commit:call("git:commit"),push:call("git:push"),history:call("git:history"),identity:call("git:identity")});
-contextBridge.exposeInMainWorld("learningSite",{projects:{list:call("projects:list"),create:call("projects:create"),open:call("projects:open"),remove:call("projects:remove"),updateSettings:call("projects:updateSettings"),delete:call("projects:delete"),clone:call("projects:clone"),importLegacy:call("projects:importLegacy")},editor:{pages:call("editor:pages"),draft:call("editor:draft"),saveDraft:call("editor:saveDraft"),discardDraft:call("editor:discardDraft"),savePage:call("editor:savePage"),deletePage:call("editor:deletePage"),settings:call("editor:settings"),saveSettings:call("editor:saveSettings"),validate:call("editor:validate"),build:call("editor:build"),migrate:call("editor:migrate"),themes:call("editor:themes"),selectTheme:call("editor:selectTheme"),media:call("editor:media"),importImage:call("editor:importImage"),deleteImage:call("editor:deleteImage"),mediaReferences:call("editor:mediaReferences"),favicon:call("editor:favicon"),preview:call("editor:preview"),folders:call("editor:folders"),createFolder:call("editor:createFolder"),renameFolder:call("editor:renameFolder"),movePage:call("editor:movePage"),setPublication:call("editor:setPublication"),trashPage:call("editor:trashPage")},git,app:{version:call("app:version"),update:call("app:update"),installUpdate:call("app:installUpdate"),chooseDirectory:call("app:chooseDirectory"),openExternal:call("app:openExternal")}});
+const call =
+  (channel: string) =>
+  (...args: unknown[]) =>
+    ipcRenderer.invoke(channel, ...args);
+const git = Object.assign(call("git:status"), {
+  status: call("git:status"),
+  projectStatus: call("git:projectStatus"),
+  syncProject: call("git:syncProject"),
+  updateProject: call("git:updateProject"),
+  init: call("git:init"),
+  sync: call("git:sync"),
+  commit: call("git:commit"),
+  push: call("git:push"),
+  history: call("git:history"),
+  identity: call("git:identity"),
+});
+contextBridge.exposeInMainWorld("learningSite", {
+  projects: {
+    list: call("projects:list"),
+    create: call("projects:create"),
+    open: call("projects:open"),
+    remove: call("projects:remove"),
+    updateSettings: call("projects:updateSettings"),
+    delete: call("projects:delete"),
+    clone: call("projects:clone"),
+    importLegacy: call("projects:importLegacy"),
+  },
+  editor: {
+    pages: call("editor:pages"),
+    draft: call("editor:draft"),
+    saveDraft: call("editor:saveDraft"),
+    discardDraft: call("editor:discardDraft"),
+    savePage: call("editor:savePage"),
+    deletePage: call("editor:deletePage"),
+    settings: call("editor:settings"),
+    saveSettings: call("editor:saveSettings"),
+    validate: call("editor:validate"),
+    build: call("editor:build"),
+    migrate: call("editor:migrate"),
+    themes: call("editor:themes"),
+    selectTheme: call("editor:selectTheme"),
+    media: call("editor:media"),
+    importImage: call("editor:importImage"),
+    deleteImage: call("editor:deleteImage"),
+    mediaReferences: call("editor:mediaReferences"),
+    favicon: call("editor:favicon"),
+    resetFavicon: call("editor:resetFavicon"),
+    preview: call("editor:preview"),
+    stopPreview: call("editor:stopPreview"),
+    folders: call("editor:folders"),
+    createFolder: call("editor:createFolder"),
+    renameFolder: call("editor:renameFolder"),
+    moveFolder: call("editor:moveFolder"),
+    movePage: call("editor:movePage"),
+    setPublication: call("editor:setPublication"),
+    reorderPage: call("editor:reorderPage"),
+    trashPage: call("editor:trashPage"),
+    trashedPages: call("editor:trashedPages"),
+    restorePage: call("editor:restorePage"),
+    trashFolder: call("editor:trashFolder"),
+    trashedFolders: call("editor:trashedFolders"),
+    restoreFolder: call("editor:restoreFolder"),
+  },
+  git,
+  app: {
+    version: call("app:version"),
+    update: call("app:update"),
+    installUpdate: call("app:installUpdate"),
+    chooseDirectory: call("app:chooseDirectory"),
+    openExternal: call("app:openExternal"),
+  },
+});

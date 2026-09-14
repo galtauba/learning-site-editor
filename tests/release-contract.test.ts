@@ -19,8 +19,8 @@ describe("production release contract",()=>{
   const preload=await source("electron/preload.cts");
   const main=await source("electron/main.ts");
   expect(preload).not.toMatch(/node:fs|child_process|shell\.openExternal/);
-  expect(main).toContain("contextIsolation:true");
-  expect(main).toContain("nodeIntegration:false");
+  expect(main).toMatch(/contextIsolation\s*:\s*true/);
+  expect(main).toMatch(/nodeIntegration\s*:\s*false/);
   expect(main).toContain("preload.cjs");
   expect(main).toContain("git:projectStatus");
   expect(main).toContain("git:updateProject");

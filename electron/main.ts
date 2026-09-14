@@ -5,17 +5,195 @@ import * as service from "./services.js";
 import { logError } from "./logging.js";
 
 const { autoUpdater } = updater;
-let window:BrowserWindow|undefined;
-const root=(value:unknown)=>{if(typeof value!=="string"||!value.trim())throw new Error("A project path is required.");return value;};
-function handle(channel:string,fn:(...args:any[])=>unknown){ipcMain.handle(channel,async(_event,...args)=>{try{return await fn(...args);}catch(error){await logError(channel,error).catch(()=>undefined);throw error;}});}
-async function boot(){window=new BrowserWindow({width:1400,height:900,minWidth:1000,minHeight:650,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,preload:join(import.meta.dirname,"preload.cjs")}});const url=process.env.VITE_DEV_SERVER_URL;if(url)await window.loadURL(url);else await window.loadFile(join(app.getAppPath(),"dist","index.html"));}
+let window: BrowserWindow | undefined;
+const root = (value: unknown) => {
+  if (typeof value !== "string" || !value.trim())
+    throw new Error("A project path is required.");
+  return value;
+};
+function handle(channel: string, fn: (...args: any[]) => unknown) {
+  ipcMain.handle(channel, async (_event, ...args) => {
+    try {
+      return await fn(...args);
+    } catch (error) {
+      await logError(channel, error).catch(() => undefined);
+      throw error;
+    }
+  });
+}
+async function boot() {
+  window = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    minWidth: 1000,
+    minHeight: 650,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      preload: join(import.meta.dirname, "preload.cjs"),
+    },
+  });
+  const url = process.env.VITE_DEV_SERVER_URL;
+  if (url) await window.loadURL(url);
+  else await window.loadFile(join(app.getAppPath(), "dist", "index.html"));
+}
 
-app.whenReady().then(async()=>{
- handle("projects:list",service.registry);handle("projects:create",(p,t,l)=>service.create(root(p),String(t),l==="he"?"he":"en"));handle("projects:open",p=>service.remember(root(p)));handle("projects:remove",service.remove);handle("projects:updateSettings",(id,changes)=>service.updateRegistryProject(String(id),changes??{}));handle("projects:delete",service.deleteLocal);handle("projects:clone",(url,destination)=>service.clone(String(url),root(destination)));handle("projects:importLegacy",service.importLegacyRegistry);
- handle("editor:pages",p=>service.pages(root(p)));handle("editor:draft",p=>service.draft(root(p)));handle("editor:saveDraft",(p,page)=>service.saveDraft(root(p),page));handle("editor:discardDraft",p=>service.discardDraft(root(p)));handle("editor:savePage",(p,page)=>service.savePage(root(p),page));handle("editor:deletePage",(p,file)=>service.deletePage(root(p),String(file)));handle("editor:settings",p=>service.settings(root(p)));handle("editor:saveSettings",(p,settings)=>service.saveSettings(root(p),settings));handle("editor:validate",p=>service.validateProject(root(p)));handle("editor:build",p=>service.buildProject(root(p)));handle("editor:migrate",p=>service.migrateProject(root(p)));handle("editor:themes",service.themes);handle("editor:selectTheme",(p,id)=>service.selectTheme(root(p),String(id)));handle("editor:media",p=>service.media(root(p)));handle("editor:importImage",p=>service.importImage(root(p)));handle("editor:deleteImage",(p,file,force)=>service.deleteImage(root(p),String(file),force===true));handle("editor:mediaReferences",(p,file)=>service.mediaReferences(root(p),String(file)));handle("editor:favicon",p=>service.chooseFavicon(root(p)));handle("editor:preview",p=>service.preview(root(p)));
- handle("editor:folders",p=>service.folders(root(p)));handle("editor:createFolder",(p,name,parent)=>service.createFolder(root(p),String(name),typeof parent==="string"?parent:""));handle("editor:renameFolder",(p,from,to)=>service.renameFolder(root(p),String(from),String(to)));handle("editor:movePage",(p,source,target)=>service.movePage(root(p),String(source),typeof target==="string"?target:""));handle("editor:setPublication",(p,ids,published)=>service.setPublication(root(p),Array.isArray(ids)?ids.map(String):[],Boolean(published)));handle("editor:trashPage",(p,file)=>service.trashPage(root(p),String(file)));
- handle("git:status",p=>service.git(root(p),["status","--short","--branch"]));handle("git:projectStatus",(p,checkOfficialUpdates)=>service.projectStatus(root(p),checkOfficialUpdates!==false));handle("git:syncProject",(p,push)=>service.syncProject(root(p),push!==false));handle("git:updateProject",(p,tag)=>service.updateProject(root(p),String(tag)));handle("git:init",p=>service.git(root(p),["init"]));handle("git:sync",async p=>{await service.git(root(p),["fetch","origin"]);return service.git(root(p),["pull","--ff-only"]);});handle("git:commit",(p,message)=>service.git(root(p),["add","-A"]).then(()=>service.git(root(p),["commit","-m",String(message)])));handle("git:push",p=>service.git(root(p),["push","-u","origin","HEAD"]));handle("git:history",p=>service.git(root(p),["log","--oneline","-30"]));handle("git:identity",(p,name,email)=>Promise.all([service.git(root(p),["config","user.name",String(name)]),service.git(root(p),["config","user.email",String(email)])]));
- handle("app:version",()=>app.getVersion());handle("app:update",async()=>!app.isPackaged?{state:"development"}:autoUpdater.checkForUpdates());handle("app:installUpdate",()=>autoUpdater.quitAndInstall());handle("app:chooseDirectory",async()=>{const result=await dialog.showOpenDialog({properties:["openDirectory","createDirectory"]});return result.canceled?undefined:result.filePaths[0];});handle("app:openExternal",url=>shell.openExternal(String(url)));
- await boot();
+app.whenReady().then(async () => {
+  handle("projects:list", service.registry);
+  handle("projects:create", (p, t, l) =>
+    service.create(root(p), String(t), l === "he" ? "he" : "en"),
+  );
+  handle("projects:open", (p) => service.remember(root(p)));
+  handle("projects:remove", service.remove);
+  handle("projects:updateSettings", (id, changes) =>
+    service.updateRegistryProject(String(id), changes ?? {}),
+  );
+  handle("projects:delete", service.deleteLocal);
+  handle("projects:clone", (url, destination) =>
+    service.clone(String(url), root(destination)),
+  );
+  handle("projects:importLegacy", service.importLegacyRegistry);
+  handle("editor:pages", (p) => service.pages(root(p)));
+  handle("editor:draft", (p) => service.draft(root(p)));
+  handle("editor:saveDraft", (p, page) => service.saveDraft(root(p), page));
+  handle("editor:discardDraft", (p) => service.discardDraft(root(p)));
+  handle("editor:savePage", (p, page) => service.savePage(root(p), page));
+  handle("editor:deletePage", (p, file) =>
+    service.deletePage(root(p), String(file)),
+  );
+  handle("editor:settings", (p) => service.settings(root(p)));
+  handle("editor:saveSettings", (p, settings) =>
+    service.saveSettings(root(p), settings),
+  );
+  handle("editor:validate", (p) => service.validateProject(root(p)));
+  handle("editor:build", (p) => service.buildProject(root(p)));
+  handle("editor:migrate", (p) => service.migrateProject(root(p)));
+  handle("editor:themes", service.themes);
+  handle("editor:selectTheme", (p, id) =>
+    service.selectTheme(root(p), String(id)),
+  );
+  handle("editor:media", (p) => service.media(root(p)));
+  handle("editor:importImage", (p) => service.importImage(root(p)));
+  handle("editor:deleteImage", (p, file, force) =>
+    service.deleteImage(root(p), String(file), force === true),
+  );
+  handle("editor:mediaReferences", (p, file) =>
+    service.mediaReferences(root(p), String(file)),
+  );
+  handle("editor:favicon", (p) => service.chooseFavicon(root(p)));
+  handle("editor:resetFavicon", (p) => service.resetFavicon(root(p)));
+  handle("editor:preview", (p) => service.preview(root(p)));
+  handle("editor:stopPreview", () => service.stopPreview());
+  handle("editor:folders", (p) => service.folders(root(p)));
+  handle("editor:createFolder", (p, name, parent) =>
+    service.createFolder(
+      root(p),
+      String(name),
+      typeof parent === "string" ? parent : "",
+    ),
+  );
+  handle("editor:renameFolder", (p, from, to) =>
+    service.renameFolder(root(p), String(from), String(to)),
+  );
+  handle("editor:moveFolder", (p, source, target) =>
+    service.moveFolder(root(p), String(source), target ? String(target) : ""),
+  );
+  handle("editor:movePage", (p, source, target) =>
+    service.movePage(
+      root(p),
+      String(source),
+      typeof target === "string" ? target : "",
+    ),
+  );
+  handle("editor:setPublication", (p, ids, published) =>
+    service.setPublication(
+      root(p),
+      Array.isArray(ids) ? ids.map(String) : [],
+      Boolean(published),
+    ),
+  );
+  handle("editor:reorderPage", (p, id, direction) =>
+    service.reorderPage(
+      root(p),
+      String(id),
+      direction === "up" ? "up" : "down",
+    ),
+  );
+  handle("editor:trashPage", (p, file) =>
+    service.trashPage(root(p), String(file)),
+  );
+  handle("editor:trashedPages", (p) => service.trashedPages(root(p)));
+  handle("editor:restorePage", (p, name, folder) =>
+    service.restorePage(
+      root(p),
+      String(name),
+      typeof folder === "string" ? folder : "",
+    ),
+  );
+  handle("editor:trashFolder", (p, folder) =>
+    service.trashFolder(root(p), String(folder)),
+  );
+  handle("editor:trashedFolders", (p) => service.trashedFolders(root(p)));
+  handle("editor:restoreFolder", (p, name, folder) =>
+    service.restoreFolder(
+      root(p),
+      String(name),
+      typeof folder === "string" ? folder : "",
+    ),
+  );
+  handle("git:status", (p) =>
+    service.git(root(p), ["status", "--short", "--branch"]),
+  );
+  handle("git:projectStatus", (p, checkOfficialUpdates) =>
+    service.projectStatus(root(p), checkOfficialUpdates !== false),
+  );
+  handle("git:syncProject", (p, push) =>
+    service.syncProject(root(p), push !== false),
+  );
+  handle("git:updateProject", (p, tag) =>
+    service.updateProject(root(p), String(tag)),
+  );
+  handle("git:init", (p) => service.git(root(p), ["init"]));
+  handle("git:sync", async (p) => {
+    await service.git(root(p), ["fetch", "origin"]);
+    return service.git(root(p), ["pull", "--ff-only"]);
+  });
+  handle("git:commit", (p, message) =>
+    service
+      .git(root(p), ["add", "-A"])
+      .then(() => service.git(root(p), ["commit", "-m", String(message)])),
+  );
+  handle("git:push", (p) =>
+    service.git(root(p), ["push", "-u", "origin", "HEAD"]),
+  );
+  handle("git:history", (p) =>
+    service.git(root(p), ["log", "--oneline", "-30"]),
+  );
+  handle("git:identity", (p, name, email) =>
+    Promise.all([
+      service.git(root(p), ["config", "user.name", String(name)]),
+      service.git(root(p), ["config", "user.email", String(email)]),
+    ]),
+  );
+  handle("app:version", () => app.getVersion());
+  handle("app:update", async () => {
+    if (!app.isPackaged) return { state: "development" };
+    const result = await autoUpdater.checkForUpdates();
+    return result?.updateInfo?.version
+      ? { state: "available", version: result.updateInfo.version }
+      : { state: "up-to-date" };
+  });
+  handle("app:installUpdate", () => autoUpdater.quitAndInstall());
+  handle("app:chooseDirectory", async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openDirectory", "createDirectory"],
+    });
+    return result.canceled ? undefined : result.filePaths[0];
+  });
+  handle("app:openExternal", (url) => shell.openExternal(String(url)));
+  await boot();
 });
-app.on("window-all-closed",()=>{if(process.platform!=="darwin")app.quit();});
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});
