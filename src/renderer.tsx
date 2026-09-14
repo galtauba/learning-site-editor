@@ -40,6 +40,7 @@ function App() {
     [notice, setNotice] = useState("מוכן."),
     [busy, setBusy] = useState(false),
     [previewActive, setPreviewActive] = useState(false),
+    [updateReady, setUpdateReady] = useState(false),
     [fontScale, setFontScale] = useState(() =>
       Number(localStorage.getItem("learning-site-editor-font-scale") ?? "1"),
     ),
@@ -222,16 +223,32 @@ function App() {
                 state?: string;
                 version?: string;
               };
+              setUpdateReady(result.state === "downloaded");
               return result.state === "development"
                 ? "בדיקת עדכונים זמינה במתקין בלבד."
                 : result.state === "available"
-                  ? `זמין עדכון לעורך: ${result.version}. הפעל מחדש לאחר שההורדה תסתיים.`
-                  : "העורך מעודכן.";
+                  ? `הורדת עדכון ${result.version} החלה. בדוק שוב כשהיא מסתיימת.`
+                  : result.state === "downloaded"
+                    ? `עדכון ${result.version} מוכן להתקנה.`
+                    : "העורך מעודכן.";
             })
           }
         >
           בדוק עדכון
         </button>
+        {updateReady && (
+          <button
+            title="התקן את העדכון שהורד"
+            onClick={() =>
+              void run(async () => {
+                await api.app.installUpdate();
+                return "העורך ייסגר כעת כדי להשלים את העדכון.";
+              })
+            }
+          >
+            התקן עדכון
+          </button>
+        )}
         <button
           title="Decrease interface text"
           onClick={() => changeFontScale(fontScale - 0.05)}
@@ -307,7 +324,7 @@ function App() {
                 void run(async () => {
                   const parent = await api.app.chooseDirectory();
                   if (!parent) return "No folder selected.";
-                  const p = await api.projects.create(parent, title, "en");
+                  const p = await api.projects.create(parent, title, "he");
                   await reload();
                   return select(p);
                 })
@@ -332,7 +349,10 @@ function App() {
                       ?.replace(/\.git$/i, "") || "learning-site";
                   const p = await api.projects.clone(url, `${parent}\\${name}`);
                   await reload();
-                  return select(p);
+                  await select(p, "git");
+                  return p.state === "UNINITIALIZED"
+                    ? "נוצר אתר חדש בריפו הריק. עבור ללשונית Git והזן שם ואימייל כדי ליצור commit ראשון."
+                    : `Opened ${p.name}.`;
                 })
               }
               importLauncher={() =>
@@ -356,7 +376,6 @@ function App() {
               edit={edit}
               insert={insert}
               bodyRef={body}
-              project={project}
               create={() => setPage(freshPage())}
               save={() => void run(save)}
               move={(direction: "up" | "down") =>
@@ -430,6 +449,24 @@ function App() {
                   setFolder("");
                   await refresh(project);
                   return "Folder moved.";
+                })
+              }
+              loadTrash={() => run(() => api.editor.trashedPages(project.path))}
+              restorePage={(item: string) =>
+                run(async () => {
+                  await api.editor.restorePage(project.path, item, folder);
+                  await refresh(project);
+                  return api.editor.trashedPages(project.path);
+                })
+              }
+              loadFolderTrash={() =>
+                run(() => api.editor.trashedFolders(project.path))
+              }
+              restoreFolder={(item: string) =>
+                run(async () => {
+                  await api.editor.restoreFolder(project.path, item, folder);
+                  await refresh(project);
+                  return api.editor.trashedFolders(project.path);
                 })
               }
               draft={draft}
@@ -510,10 +547,15 @@ function App() {
                 })
               }
               use={(image: { path: string; alt?: string }) =>
-                edit((p) => ({
-                  ...p,
-                  body: `${p.body}${p.body.endsWith("\n") ? "" : "\n"}![${image.path}](/media/${image.path})\n`,
-                }))
+                page
+                  ? edit((p) => ({
+                      ...p,
+                      body: `${p.body}${p.body.endsWith("\n") ? "" : "\n"}![${image.path}](/media/${image.path})\n`,
+                    }))
+                  : setNotice("בחר עמוד לפני הוספת תמונה.")
+              }
+              references={(path: string) =>
+                run(() => api.editor.mediaReferences(project.path, path))
               }
               remove={(path: string) =>
                 void run(async () => {
@@ -727,7 +769,6 @@ const Editor = ({
   edit,
   insert,
   bodyRef,
-  project,
   create,
   save,
   move,
@@ -738,6 +779,10 @@ const Editor = ({
   renameFolder,
   trashFolder,
   moveSelectedFolder,
+  loadTrash,
+  restorePage,
+  loadFolderTrash,
+  restoreFolder,
   draft,
   restoreDraft,
   discardDraft,
@@ -901,7 +946,9 @@ const Editor = ({
         )}
         <button
           onClick={() =>
-            void api.editor.trashedPages(project.path).then(setTrashItems)
+            void loadTrash().then((items: string[]) =>
+              setTrashItems(items ?? []),
+            )
           }
         >
           סל עמודים ({trashItems.length || "הצג"})
@@ -909,19 +956,20 @@ const Editor = ({
         {trashItems.map((item) => (
           <button
             key={item}
-            onClick={async () => {
-              await api.editor.restorePage(project.path, item, selectedFolder);
-              setTrashItems(await api.editor.trashedPages(project.path));
-            }}
+            onClick={() =>
+              void restorePage(item).then((items: string[]) =>
+                setTrashItems(items ?? []),
+              )
+            }
           >
             שחזר {item.replace(/^\d+-/, "")}
           </button>
         ))}
         <button
           onClick={() =>
-            void api.editor
-              .trashedFolders(project.path)
-              .then(setFolderTrashItems)
+            void loadFolderTrash().then((items: string[]) =>
+              setFolderTrashItems(items ?? []),
+            )
           }
         >
           סל תיקיות ({folderTrashItems.length || "הצג"})
@@ -929,16 +977,11 @@ const Editor = ({
         {folderTrashItems.map((item) => (
           <button
             key={item}
-            onClick={async () => {
-              await api.editor.restoreFolder(
-                project.path,
-                item,
-                selectedFolder,
-              );
-              setFolderTrashItems(
-                await api.editor.trashedFolders(project.path),
-              );
-            }}
+            onClick={() =>
+              void restoreFolder(item).then((items: string[]) =>
+                setFolderTrashItems(items ?? []),
+              )
+            }
           >
             שחזר תיקייה {item.replace(/^\d+-/, "")}
           </button>
@@ -1486,34 +1529,57 @@ const Settings = ({
     </>
   );
 };
-const Media = ({ media, busy, add, use, remove }: any) => (
-  <>
-    <div className="row between">
-      <h1>ספריית מדיה</h1>
-      <button className="primary" disabled={busy} onClick={add}>
-        הוסף תמונה
-      </button>
-    </div>
-    <div className="cards">
-      {media.length ? (
-        media.map((m: any) => (
-          <section className="card" key={m.path}>
-            <b>{m.path}</b>
-            <small>{m.alt ?? "ללא טקסט חלופי"}</small>
-            <div className="row">
-              <button onClick={() => use(m)}>הוסף לעמוד</button>
-              <button disabled={busy} onClick={() => remove(m.path)}>
-                מחק
-              </button>
-            </div>
-          </section>
-        ))
-      ) : (
-        <p>עדיין אין תמונות.</p>
-      )}
-    </div>
-  </>
-);
+const Media = ({ media, busy, add, use, references, remove }: any) => {
+  const [usedBy, setUsedBy] = useState<Record<string, string[]>>({});
+  return (
+    <>
+      <div className="row between">
+        <h1>ספריית מדיה</h1>
+        <button className="primary" disabled={busy} onClick={add}>
+          הוסף תמונה
+        </button>
+      </div>
+      <div className="cards">
+        {media.length ? (
+          media.map((m: any) => (
+            <section className="card" key={m.path}>
+              <b>{m.path}</b>
+              <small>{m.alt ?? "ללא טקסט חלופי"}</small>
+              <div className="row">
+                <button onClick={() => use(m)}>הוסף לעמוד</button>
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    void references(m.path).then((pages: string[]) =>
+                      setUsedBy((current) => ({
+                        ...current,
+                        [m.path]: pages ?? [],
+                      })),
+                    )
+                  }
+                >
+                  בדוק שימושים
+                </button>
+                <button disabled={busy} onClick={() => remove(m.path)}>
+                  מחק
+                </button>
+              </div>
+              {usedBy[m.path] && (
+                <small>
+                  {usedBy[m.path].length
+                    ? `בשימוש בעמודים: ${usedBy[m.path].join(", ")}`
+                    : "התמונה אינה בשימוש."}
+                </small>
+              )}
+            </section>
+          ))
+        ) : (
+          <p>עדיין אין תמונות.</p>
+        )}
+      </div>
+    </>
+  );
+};
 const Git = ({
   project,
   status,

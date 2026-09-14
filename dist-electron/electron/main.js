@@ -5,6 +5,26 @@ import * as service from "./services.js";
 import { logError } from "./logging.js";
 const { autoUpdater } = updater;
 let window;
+let availableVersion;
+let downloadedVersion;
+autoUpdater.on("update-available", (info) => {
+    availableVersion = info.version;
+});
+autoUpdater.on("update-downloaded", (info) => {
+    availableVersion = info.version;
+    downloadedVersion = info.version;
+});
+async function checkForAppUpdate() {
+    if (!app.isPackaged)
+        return { state: "development" };
+    if (downloadedVersion)
+        return { state: "downloaded", version: downloadedVersion };
+    availableVersion = undefined;
+    await autoUpdater.checkForUpdates();
+    return availableVersion
+        ? { state: "available", version: availableVersion }
+        : { state: "up-to-date" };
+}
 const root = (value) => {
     if (typeof value !== "string" || !value.trim())
         throw new Error("A project path is required.");
@@ -103,14 +123,13 @@ app.whenReady().then(async () => {
     ]));
     handle("app:version", () => app.getVersion());
     handle("app:update", async () => {
-        if (!app.isPackaged)
-            return { state: "development" };
-        const result = await autoUpdater.checkForUpdates();
-        return result?.updateInfo?.version
-            ? { state: "available", version: result.updateInfo.version }
-            : { state: "up-to-date" };
+        return checkForAppUpdate();
     });
-    handle("app:installUpdate", () => autoUpdater.quitAndInstall());
+    handle("app:installUpdate", () => {
+        if (!downloadedVersion)
+            throw new Error("No downloaded update is ready to install.");
+        autoUpdater.quitAndInstall();
+    });
     handle("app:chooseDirectory", async () => {
         const result = await dialog.showOpenDialog({
             properties: ["openDirectory", "createDirectory"],
@@ -118,6 +137,7 @@ app.whenReady().then(async () => {
         return result.canceled ? undefined : result.filePaths[0];
     });
     handle("app:openExternal", (url) => shell.openExternal(String(url)));
+    void checkForAppUpdate().catch((error) => logError("app:autoUpdate", error));
     await boot();
 });
 app.on("window-all-closed", () => {
